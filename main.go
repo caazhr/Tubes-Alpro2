@@ -8,6 +8,7 @@ import (
 const maxInvestasi = 100
 
 type Investasi struct {
+	ID            int
 	NamaAset      string
 	JenisAset     string
 	DanaAwal      float64
@@ -16,8 +17,10 @@ type Investasi struct {
 
 var dataInvestasi [maxInvestasi]Investasi
 var jumlahData int
+var nextID int = 1
 
 func main() {
+	inisialisasiData()
 	var pilihan int
 	for {
 		fmt.Println("\n===--- Daftar Menu ---===")
@@ -58,11 +61,23 @@ func main() {
 	}
 }
 
+func inisialisasiData() {
+	dataInvestasi[0] = Investasi{ID: 1, NamaAset: "SahamA", JenisAset: "Saham", DanaAwal: 1000000, NilaiSekarang: 1200000}
+	dataInvestasi[1] = Investasi{ID: 2, NamaAset: "ObligasiB", JenisAset: "Obligasi", DanaAwal: 1500000, NilaiSekarang: 1400000}
+	dataInvestasi[2] = Investasi{ID: 3, NamaAset: "ReksaDanaC", JenisAset: "Reksa Dana", DanaAwal: 2000000, NilaiSekarang: 2500000}
+	jumlahData = 3
+	nextID = 4
+}
+
 func tambahInvestasi() {
 	if jumlahData >= maxInvestasi {
 		fmt.Println("Kapasitas penyimpanan penuh!")
 		return
 	}
+
+	dataInvestasi[jumlahData].ID = nextID
+	nextID++
+
 	fmt.Print("Masukkan nama aset: ")
 	fmt.Scan(&dataInvestasi[jumlahData].NamaAset)
 	fmt.Print("Masukkan jenis aset: ")
@@ -76,14 +91,15 @@ func tambahInvestasi() {
 }
 
 func ubahInvestasi() {
-	fmt.Print("Masukkan nama aset yang akan diubah: ")
-	var nama string
-	fmt.Scan(&nama)
-	idx := sequentialSearch(nama)
+	fmt.Print("Masukkan ID aset yang akan diubah: ")
+	var id int
+	fmt.Scan(&id)
+	idx := cariIndexByID(id)
 	if idx == -1 {
 		fmt.Println("Data tidak ditemukan.")
 		return
 	}
+	fmt.Printf("Data ditemukan: %+v\n", dataInvestasi[idx])
 	fmt.Print("Masukkan jenis aset baru: ")
 	fmt.Scan(&dataInvestasi[idx].JenisAset)
 	fmt.Print("Masukkan dana awal baru: ")
@@ -94,10 +110,11 @@ func ubahInvestasi() {
 }
 
 func hapusInvestasi() {
-	fmt.Print("Masukkan nama aset yang akan dihapus: ")
-	var nama string
-	fmt.Scan(&nama)
-	idx := sequentialSearch(nama)
+	fmt.Print("Masukkan ID aset yang akan dihapus: ")
+	var id int
+	fmt.Scan(&id)
+	sortByIDAscending()
+	idx := binarySearchByID(id)
 	if idx == -1 {
 		fmt.Println("Data tidak ditemukan.")
 		return
@@ -107,6 +124,30 @@ func hapusInvestasi() {
 	}
 	jumlahData--
 	fmt.Println("Data berhasil dihapus.")
+}
+
+func cariIndexByID(id int) int {
+	for i := 0; i < jumlahData; i++ {
+		if dataInvestasi[i].ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+func binarySearchByID(id int) int {
+	low, high := 0, jumlahData-1
+	for low <= high {
+		mid := (low + high) / 2
+		if dataInvestasi[mid].ID == id {
+			return mid
+		} else if dataInvestasi[mid].ID < id {
+			low = mid + 1
+		} else {
+			high = mid - 1
+		}
+	}
+	return -1
 }
 
 func sequentialSearch(nama string) int {
@@ -134,24 +175,42 @@ func binarySearch(nama string) int {
 }
 
 func menuCariInvestasi() {
-	var nama string
 	fmt.Print("Masukkan nama aset yang dicari: ")
+	var nama string
 	fmt.Scan(&nama)
 	fmt.Println("Pilih metode pencarian:")
 	fmt.Println("1. Sequential Search")
-	fmt.Println("2. Binary Search (array harus sudah diurutkan)")
+	fmt.Println("2. Binary Search (otomatis urut ascending)")
 	var metode int
 	fmt.Scan(&metode)
 	var idx int
 	if metode == 1 {
 		idx = sequentialSearch(nama)
 	} else {
+		insertionSortByNama(true)
 		idx = binarySearch(nama)
 	}
 	if idx == -1 {
 		fmt.Println("Data tidak ditemukan.")
 	} else {
-		fmt.Printf("Ditemukan: %+v\n", dataInvestasi[idx])
+		fmt.Println("Data ditemukan:")
+		fmt.Printf("ID            : %d\n", dataInvestasi[idx].ID)
+		fmt.Printf("Nama Aset     : %s\n", dataInvestasi[idx].NamaAset)
+		fmt.Printf("Jenis Aset    : %s\n", dataInvestasi[idx].JenisAset)
+		fmt.Printf("Dana Awal     : %.2f\n", dataInvestasi[idx].DanaAwal)
+		fmt.Printf("Nilai Sekarang: %.2f\n", dataInvestasi[idx].NilaiSekarang)
+	}
+}
+
+func insertionSortByNama(ascending bool) {
+	for i := 1; i < jumlahData; i++ {
+		temp := dataInvestasi[i]
+		j := i - 1
+		for j >= 0 && ((ascending && strings.ToLower(dataInvestasi[j].NamaAset) > strings.ToLower(temp.NamaAset)) || (!ascending && strings.ToLower(dataInvestasi[j].NamaAset) < strings.ToLower(temp.NamaAset))) {
+			dataInvestasi[j+1] = dataInvestasi[j]
+			j--
+		}
+		dataInvestasi[j+1] = temp
 	}
 }
 
@@ -173,11 +232,11 @@ func selectionSortByKeuntungan(ascending bool) {
 	}
 }
 
-func insertionSortByNama(ascending bool) {
+func sortByIDAscending() {
 	for i := 1; i < jumlahData; i++ {
 		temp := dataInvestasi[i]
 		j := i - 1
-		for j >= 0 && ((ascending && strings.ToLower(dataInvestasi[j].NamaAset) > strings.ToLower(temp.NamaAset)) || (!ascending && strings.ToLower(dataInvestasi[j].NamaAset) < strings.ToLower(temp.NamaAset))) {
+		for j >= 0 && dataInvestasi[j].ID > temp.ID {
 			dataInvestasi[j+1] = dataInvestasi[j]
 			j--
 		}
@@ -217,14 +276,14 @@ func hitungKeuntungan() {
 
 func tampilkanLaporan() {
 	fmt.Println("\n=== Laporan Portofolio Investasi ===")
-	fmt.Printf("%-20s %-10s %-15s %-15s %-10s\n", "Nama Aset", "Jenis", "Dana Awal", "Nilai Sekarang", "Untung")
+	fmt.Printf("%-5s %-20s %-10s %-15s %-15s %-10s\n", "ID", "Nama Aset", "Jenis", "Dana Awal", "Nilai Sekarang", "Untung")
 	for i := 0; i < jumlahData; i++ {
-		fmt.Printf("%-20s %-10s %-15.2f %-15.2f %-10.2f\n",
+		fmt.Printf("%-5d %-20s %-10s %-15.2f %-15.2f %-10.2f\n",
+			dataInvestasi[i].ID,
 			dataInvestasi[i].NamaAset,
 			dataInvestasi[i].JenisAset,
 			dataInvestasi[i].DanaAwal,
 			dataInvestasi[i].NilaiSekarang,
 			keuntungan(i))
-
 	}
 }
